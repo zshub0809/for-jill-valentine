@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For Jill 💖</title>
+
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(#ffb6c1, #300);
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+
+  canvas {
+    background: #000;
+    border-radius: 16px;
+    border: 4px solid pink;
+  }
+
+  #controls {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 70px);
+    gap: 10px;
+  }
+
+  button {
+    background: #ffb6c1;
+    border: none;
+    border-radius: 16px;
+    font-size: 22px;
+    padding: 14px;
+  }
+
+  /* Floating hearts */
+  .heart {
+    position: fixed;
+    bottom: -20px;
+    font-size: 20px;
+    animation: floatUp 6s linear infinite;
+    opacity: 0.8;
+  }
+
+  @keyframes floatUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-110vh) scale(1.5); opacity: 0; }
+  }
+
+  /* Proposal screen */
+  #proposal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(#ff69b4, #300);
+    color: white;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #proposal h1 {
+    font-size: 2.6em;
+    margin: 15px;
+  }
+
+  #ring {
+    font-size: 90px;
+    animation: ringPop 1.4s ease-in-out infinite;
+  }
+
+  @keyframes ringPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  #proposal button {
+    margin: 10px;
+    font-size: 24px;
+    padding: 15px 30px;
+    border-radius: 20px;
+    background: pink;
+    border: none;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="game">
+  <canvas id="tetris" width="200" height="360"></canvas>
+
+  <div id="controls">
+    <button onclick="move(-1)">⬅️</button>
+    <button onclick="rotate()">🔄</button>
+    <button onclick="move(1)">➡️</button>
+    <button onclick="drop()">⬇️</button>
+  </div>
+</div>
+
+<div id="proposal">
+  <div id="ring">💍</div>
+  <h1 id="proposalText"></h1>
+  <button onclick="accept()">Yes 💖</button>
+  <button onclick="accept()">Always 💕</button>
+</div>
+
+<!-- 🎶 Background Music -->
+<audio id="music" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6c4f86e7cb.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* 💕 Jill 💕 */
+const valentinesName = "Jill";
+
+/* 🎶 Music (mobile-safe) */
+const music = document.getElementById("music");
+document.body.addEventListener("click", () => music.play(), { once: true });
+
+/* 💗 Floating Hearts */
+setInterval(() => {
+  const heart = document.createElement("div");
+  heart.className = "heart";
+  heart.innerText = "💗";
+  heart.style.left = Math.random() * 100 + "vw";
+  heart.style.animationDuration = 4 + Math.random() * 4 + "s";
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 7000);
+}, 400);
+
+/* 🎮 Canvas */
+const canvas = document.getElementById("tetris");
+const ctx = canvas.getContext("2d");
+ctx.scale(20, 20);
+
+const arena = Array.from({ length: 18 }, () => Array(10).fill(0));
+
+/* 🧩 Tetromino Shapes */
+const SHAPES = [
+  [[1,1,1,1]],                 // I
+  [[1,1],[1,1]],               // O
+  [[0,1,0],[1,1,1]],           // T
+  [[1,0,0],[1,1,1]],           // L
+  [[0,0,1],[1,1,1]],           // J
+  [[1,1,0],[0,1,1]],           // S
+  [[0,1,1],[1,1,0]]            // Z
+];
+
+function randomPiece() {
+  return SHAPES[Math.floor(Math.random() * SHAPES.length)];
+}
+
+const player = {
+  pos: { x: 4, y: 0 },
+  matrix: randomPiece()
+};
+
+let cleared = 0;
+let ended = false;
+
+/* 🧠 Collision */
+function collide() {
+  return player.matrix.some((row, y) =>
+    row.some((v, x) =>
+      v &&
+      (arena[y + player.pos.y] &&
+       arena[y + player.pos.y][x + player.pos.x]) !== 0
+    )
+  );
+}
+
+/* 🔗 Merge */
+function merge() {
+  player.matrix.forEach((row, y) =>
+    row.forEach((v, x) => {
+      if (v) arena[y + player.pos.y][x + player.pos.x] = 1;
+    })
+  );
+}
+
+/* 🧹 Clear Lines */
+function sweep() {
+  for (let y = arena.length - 1; y >= 0; y--) {
+    if (arena[y].every(v => v)) {
+      arena.splice(y, 1);
+      arena.unshift(Array(10).fill(0));
+      cleared++;
+      if (cleared >= 3) endGame();
+    }
+  }
+}
+
+/* 🎨 Draw */
+function drawMatrix(matrix, offset) {
+  matrix.forEach((row, y) =>
+    row.forEach((v, x) => {
+      if (v) {
+        ctx.fillStyle = "#ff69b4";
+        ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+      }
+    })
+  );
+}
+
+function draw() {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawMatrix(arena, { x: 0, y: 0 });
+  drawMatrix(player.matrix, player.pos);
+}
+
+/* Controls */
+function drop() {
+  player.pos.y++;
+  if (collide()) {
+    player.pos.y--;
+    merge();
+    sweep();
+    player.pos.y = 0;
+    player.matrix = randomPiece();
+    player.pos.x = 4;
+  }
+}
+
+function move(dir) {
+  player.pos.x += dir;
+  if (collide()) player.pos.x -= dir;
+}
+
+function rotate() {
+  const m = player.matrix;
+  const rotated = m[0].map((_, i) => m.map(row => row[i]).reverse());
+  const prev = player.matrix;
+  player.matrix = rotated;
+  if (collide()) player.matrix = prev;
+}
+
+/* 💍 Proposal */
+function endGame() {
+  ended = true;
+  document.getElementById("proposalText").innerHTML =
+    `💖 Jill, will you be my Valentine? 💖`;
+  document.getElementById("proposal").style.display = "flex";
+}
+
+function accept() {
+  alert("I love you so much 💕");
+}
+
+/* ⏱️ Loop */
+setInterval(() => {
+  if (!ended) {
+    drop();
+    draw();
+  }
+}, 650);
+</script>
+
+</body>
+</html>
